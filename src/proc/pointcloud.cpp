@@ -3,6 +3,9 @@
 
 #include "pointcloud.h"
 #include "occlusion-filter.h"
+#include <cstdlib>
+#include <string>
+#include <stdexcept>
 #include <src/environment.h>
 #include <src/core/depth-frame.h>
 #include <src/option.h>
@@ -289,6 +292,40 @@ namespace librealsense
         return res;
     }
 
+    void pointcloud::get_envs()
+    {
+        try {
+            const char* temp_char = std::getenv("RS_PC_MIN_X");
+            if(temp_char == nullptr) _min_x = 0;
+            else _min_x = std::stoi(temp_char);
+
+            temp_char = std::getenv("RS_PC_MAX_X");
+            if(temp_char == nullptr) _max_x = std::numeric_limits<int>::max();
+            else _max_x = std::stoi(temp_char);
+
+            temp_char = std::getenv("RS_PC_MIN_Y");
+            if(temp_char == nullptr) _min_y = 0;
+            else _min_y = std::stoi(temp_char);
+
+            temp_char = std::getenv("RS_PC_MAX_Y");
+            if(temp_char == nullptr) _max_y = std::numeric_limits<int>::max();
+            else _max_y = std::stoi(temp_char);
+
+            temp_char = std::getenv("RS_PC_MIN_DEPTH");
+            if(temp_char == nullptr) _min_depth = 0.0;
+            else _min_depth = std::stof(temp_char);
+
+            temp_char = std::getenv("RS_PC_MAX_DEPTH");
+            if(temp_char == nullptr) _max_depth = std::numeric_limits<float>::max();
+            else _max_depth = std::stof(temp_char);
+
+        } catch (const std::invalid_argument& e) {
+            throw std::runtime_error("Env variable with wrong format");
+        } catch (const std::out_of_range& e) {
+            throw std::runtime_error("Env variable with wrong format");
+        }
+    }
+
     pointcloud::pointcloud()
         : pointcloud("Pointcloud")
     {}
@@ -323,6 +360,8 @@ namespace librealsense
         occlusion_invalidation->set_description(1.f, "Off");
         occlusion_invalidation->set_description(2.f, "On");
         register_option(RS2_OPTION_FILTER_MAGNITUDE, occlusion_invalidation);
+
+        get_envs();
     }
 
     bool pointcloud::should_process(const rs2::frame& frame)

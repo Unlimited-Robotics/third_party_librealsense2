@@ -32,6 +32,7 @@ namespace librealsense
         virtual rs2::points allocate_points(const rs2::frame_source& source, const rs2::frame& f);
         virtual void preprocess() {}
         virtual bool run__occlusion_filter(const rs2_extrinsics& extr);
+        void get_envs();
 
     protected:
         pointcloud(const char* name);
@@ -59,5 +60,13 @@ namespace librealsense
 
         stream_filter _prev_stream_filter;
         std::shared_ptr< pointcloud > _registered_auto_calib_cb;
+
+        int _min_x;
+        int _max_x;
+        int _min_y;
+        int _max_y;
+        float _min_depth;
+        float _max_depth;
+
     };
 }

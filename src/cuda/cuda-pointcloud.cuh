@@ -23,7 +23,18 @@
 
 namespace rscuda
 {
-    void deproject_depth_cuda(float * points, const rs2_intrinsics & intrin, const uint16_t * depth, float depth_scale);
+    void deproject_depth_cuda(
+        float * points, 
+        const rs2_intrinsics & intrin, 
+        const uint16_t * depth, 
+        float depth_scale,
+        int min_x, 
+        int max_x, 
+        int min_y, 
+        int max_y, 
+        float min_depth, 
+        float max_depth
+    );
 
 }
 

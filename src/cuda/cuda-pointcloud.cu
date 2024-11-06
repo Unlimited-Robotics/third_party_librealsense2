@@ -61,7 +61,18 @@ void deproject_pixel_to_point_cuda(float points[3], const struct rs2_intrinsics 
 __global__
 //void kernel_deproject_depth_cuda(float * points, const rs2_intrinsics & intrin, const uint16_t * depth, std::function<uint16_t(float)> map_depth)
 
-void kernel_deproject_depth_cuda(float * points, const rs2_intrinsics* intrin, const uint16_t * depth, float depth_scale)
+void kernel_deproject_depth_cuda(
+        float * points, 
+        const rs2_intrinsics* intrin, 
+        const uint16_t * depth, 
+        float depth_scale, 
+        int min_x, 
+        int max_x, 
+        int min_y, 
+        int max_y, 
+        float min_depth, 
+        float max_depth
+    )
 {
     int i = blockDim.x * blockIdx.x + threadIdx.x;
     
@@ -72,15 +83,34 @@ void kernel_deproject_depth_cuda(float * points, const rs2_intrinsics* intrin, c
     int a, b;
     
     for (int j = i; j < (*intrin).height * (*intrin).width; j += stride) {
+        auto point_ptr = points + j * 3;
+        auto scaled_depth = depth_scale * depth[j];
         b = j / (*intrin).width;
         a = j - b * (*intrin).width;
+        if(a<min_x || a>max_x || b<min_y || b>max_y || scaled_depth<min_depth || scaled_depth>max_depth){
+            point_ptr[0] = 0.0;
+            point_ptr[1] = 0.0;
+            point_ptr[2] = -1.0;
+            continue;
+        }
         const float pixel[] = { (float)a, (float)b };
-        deproject_pixel_to_point_cuda(points + j * 3, intrin, pixel, depth_scale * depth[j]);               
+        deproject_pixel_to_point_cuda(point_ptr, intrin, pixel, scaled_depth);
    }
 }
 
 
-void rscuda::deproject_depth_cuda(float * points, const rs2_intrinsics & intrin, const uint16_t * depth, float depth_scale)
+void rscuda::deproject_depth_cuda(
+        float * points, 
+        const rs2_intrinsics & intrin, 
+        const uint16_t * depth, 
+        float depth_scale, 
+        int min_x, 
+        int max_x, 
+        int min_y, 
+        int max_y, 
+        float min_depth, 
+        float max_depth
+    )
 {
     int count = intrin.height * intrin.width;
     int numBlocks = count / RS2_CUDA_THREADS_PER_BLOCK;
@@ -102,12 +132,23 @@ void rscuda::deproject_depth_cuda(float * points, const rs2_intrinsics & intrin,
     result = cudaMemcpy(dev_intrin, &intrin, sizeof(rs2_intrinsics), cudaMemcpyHostToDevice);
     assert(result == cudaSuccess); 
      
-    kernel_deproject_depth_cuda<<<numBlocks, RS2_CUDA_THREADS_PER_BLOCK>>>(dev_points, dev_intrin, dev_depth, depth_scale); 
+    kernel_deproject_depth_cuda<<<numBlocks, RS2_CUDA_THREADS_PER_BLOCK>>>(
+        dev_points, 
+        dev_intrin, 
+        dev_depth, 
+        depth_scale,
+        min_x,
+        max_x,
+        min_y,
+        max_y,
+        min_depth,
+        max_depth
+    ); 
 
-     result = cudaMemcpy(points, dev_points, count * sizeof(float) * 3, cudaMemcpyDeviceToHost);
-     assert(result == cudaSuccess);
+    result = cudaMemcpy(points, dev_points, count * sizeof(float) * 3, cudaMemcpyDeviceToHost);
+    assert(result == cudaSuccess);
 
-     if (result); // suppress warning about "variable "result" was set but never used"
+    if (result); // suppress warning about "variable "result" was set but never used"
 
     cudaFree(dev_points);
     cudaFree(dev_depth);

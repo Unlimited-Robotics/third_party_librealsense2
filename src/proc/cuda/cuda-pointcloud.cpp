@@ -19,7 +19,18 @@ namespace librealsense
         auto depth_data = (uint16_t*)depth_frame.get_data();
         auto depth_scale = depth_frame.get_units();
 #ifdef RS2_USE_CUDA
-        rscuda::deproject_depth_cuda((float*)image, depth_intrinsics, depth_data, depth_scale);
+        rscuda::deproject_depth_cuda(
+            (float*)image, 
+            depth_intrinsics, 
+            depth_data, 
+            depth_scale,
+            _min_x,
+            _max_x,
+            _min_y,
+            _max_y,
+            _min_depth,
+            _max_depth
+        );
 #endif
         return (float3*)image;
     }
